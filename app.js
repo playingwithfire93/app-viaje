@@ -18,6 +18,11 @@ let state = {
 let map = null;
 let mapMarkers = [];
 
+// ── Edit tracking ──
+let editingTripId   = null;
+let editingTicketId = null;
+let editingItinId   = null;
+
 // ── Storage ──
 function save() {
   localStorage.setItem('musicalTrips', JSON.stringify(state));
@@ -194,6 +199,7 @@ function renderTrips() {
       <div class="trip-card" data-id="${t.id}" style="border-top-color:${color}">
         <div class="trip-card-emoji">${t.emoji}</div>
         <span class="trip-badge ${status}">${badgeText}</span>
+        <button class="card-edit-btn" data-edit-trip="${t.id}" title="Editar viaje">✏️</button>
         <h3>${esc(t.name)}</h3>
         <p class="trip-dest">📍 ${esc(t.destination)}</p>
         <span class="trip-dates">📅 ${fmtDate(t.startDate)} → ${fmtDate(t.endDate)}</span>
@@ -205,6 +211,9 @@ function renderTrips() {
 
   container.querySelectorAll('.trip-card').forEach(card => {
     card.addEventListener('click', () => openTripDetail(card.dataset.id));
+  });
+  container.querySelectorAll('[data-edit-trip]').forEach(btn => {
+    btn.addEventListener('click', e => { e.stopPropagation(); openEditTrip(btn.dataset.editTrip); });
   });
 }
 
@@ -279,11 +288,15 @@ function renderTickets() {
       </div>
       <div class="ticket-actions">
         ${t.price ? `<span class="ticket-price">${parseFloat(t.price).toFixed(2)}€</span>` : ''}
+        <button class="btn-icon" data-edit-ticket="${t.id}" title="Editar">✏️</button>
         <button class="btn-icon" data-delete-ticket="${t.id}" title="Eliminar">🗑️</button>
       </div>
     </div>
   `).join('');
 
+  container.querySelectorAll('[data-edit-ticket]').forEach(btn => {
+    btn.addEventListener('click', e => { e.stopPropagation(); openEditTicket(btn.dataset.editTicket); });
+  });
   container.querySelectorAll('[data-delete-ticket]').forEach(btn => {
     btn.addEventListener('click', e => {
       e.stopPropagation();
@@ -350,6 +363,7 @@ function renderItinerary() {
                 ${item.place  ? `<span class="itin-place">📍 ${esc(item.place)}</span>` : ''}
                 ${item.notes  ? `<span class="itin-place" style="font-style:italic">${esc(item.notes)}</span>` : ''}
               </div>
+              <button class="itin-edit" data-edit-itin="${item.id}" title="Editar">✏️</button>
               <button class="itin-delete" data-delete-itin="${item.id}" title="Eliminar">✕</button>
             </div>
           `).join('')}
@@ -380,6 +394,11 @@ function renderItinerary() {
         map.setView([lat, lng], 15);
       }
     });
+  });
+
+  // Edit itinerary item
+  container.querySelectorAll('[data-edit-itin]').forEach(btn => {
+    btn.addEventListener('click', e => { e.stopPropagation(); openEditItin(btn.dataset.editItin); });
   });
 
   // Delete
@@ -619,13 +638,90 @@ document.querySelectorAll('.modal-overlay').forEach(overlay => {
 // FORMS
 // ──────────────────────────────────────────
 
+// ──────────────────────────────────────────
+// EDIT FUNCTIONS
+// ──────────────────────────────────────────
+
+function openEditTrip(id) {
+  const t = state.trips.find(t => t.id === id);
+  if (!t) return;
+  editingTripId = id;
+  document.getElementById('tripName').value        = t.name;
+  document.getElementById('tripDestination').value = t.destination;
+  document.getElementById('tripStart').value       = t.startDate;
+  document.getElementById('tripEnd').value         = t.endDate;
+  document.getElementById('tripNotes').value       = t.notes || '';
+  document.getElementById('tripEmoji').value       = t.emoji;
+  document.querySelectorAll('.emoji-opt').forEach(b => {
+    b.classList.toggle('selected', b.dataset.emoji === t.emoji);
+  });
+  document.querySelector('#modalAddTrip .modal-header h3').textContent = '✏️ Editar Viaje';
+  document.querySelector('#formAddTrip .btn-primary').textContent      = 'Actualizar 💾';
+  closeModal('modalTripDetail');
+  openModal('modalAddTrip');
+}
+
+function openEditTicket(id) {
+  const t = state.tickets.find(t => t.id === id);
+  if (!t) return;
+  editingTicketId = id;
+  document.getElementById('ticketTrip').value  = t.tripId;
+  document.getElementById('ticketType').value  = t.type;
+  document.getElementById('ticketName').value  = t.name;
+  document.getElementById('ticketDate').value  = t.date;
+  document.getElementById('ticketTime').value  = t.time  || '';
+  document.getElementById('ticketVenue').value = t.venue || '';
+  document.getElementById('ticketSeat').value  = t.seat  || '';
+  document.getElementById('ticketCode').value  = t.code  || '';
+  document.getElementById('ticketPrice').value = t.price || '';
+  document.getElementById('ticketNotes').value = t.notes || '';
+  document.getElementById('ticketUrl').value   = t.url   || '';
+  if (t.fileData) {
+    pendingFileData = t.fileData;
+    pendingFileName = t.fileName;
+    pendingFileType = t.fileType;
+    showFilePreview(t.fileName, t.fileType);
+  } else {
+    clearFilePreview();
+  }
+  document.querySelector('#modalAddTicket .modal-header h3').textContent = '✏️ Editar Entrada';
+  document.querySelector('#formAddTicket .btn-primary').textContent      = 'Actualizar 💾';
+  openModal('modalAddTicket');
+}
+
+function openEditItin(id) {
+  const item = state.itinerary.find(i => i.id === id);
+  if (!item) return;
+  editingItinId = id;
+  document.getElementById('itineraryTrip').value     = item.tripId;
+  document.getElementById('itineraryDate').value     = item.date;
+  document.getElementById('itineraryTime').value     = item.time     || '';
+  document.getElementById('itineraryEmoji').value    = item.emoji    || '';
+  document.getElementById('itineraryActivity').value = item.activity;
+  document.getElementById('itineraryPlace').value    = item.place    || '';
+  document.getElementById('itineraryLat').value      = item.lat      || '';
+  document.getElementById('itineraryLng').value      = item.lng      || '';
+  document.getElementById('itineraryNotes').value    = item.notes    || '';
+  document.querySelector('#modalAddItinerary .modal-header h3').textContent = '✏️ Editar actividad';
+  document.querySelector('#formAddItinerary .btn-primary').textContent      = 'Actualizar 💾';
+  openModal('modalAddItinerary');
+}
+
+function resetModalTitle(modalId, originalTitle, formId, originalBtn) {
+  document.querySelector(`#${modalId} .modal-header h3`).textContent = originalTitle;
+  document.querySelector(`#${formId} .btn-primary`).textContent      = originalBtn;
+}
+
 // ── Add Trip ──
-document.getElementById('openAddTrip').addEventListener('click', () => openModal('modalAddTrip'));
+document.getElementById('openAddTrip').addEventListener('click', () => {
+  editingTripId = null;
+  resetModalTitle('modalAddTrip', '✈️ Nuevo Viaje', 'formAddTrip', 'Guardar viaje 💾');
+  openModal('modalAddTrip');
+});
 
 document.getElementById('formAddTrip').addEventListener('submit', e => {
   e.preventDefault();
-  const trip = {
-    id:          uid(),
+  const data = {
     name:        document.getElementById('tripName').value.trim(),
     destination: document.getElementById('tripDestination').value.trim(),
     startDate:   document.getElementById('tripStart').value,
@@ -633,10 +729,17 @@ document.getElementById('formAddTrip').addEventListener('submit', e => {
     emoji:       document.getElementById('tripEmoji').value || '🎭',
     notes:       document.getElementById('tripNotes').value.trim(),
   };
-  state.trips.push(trip);
+  if (editingTripId) {
+    const idx = state.trips.findIndex(t => t.id === editingTripId);
+    if (idx !== -1) state.trips[idx] = { ...state.trips[idx], ...data };
+    editingTripId = null;
+  } else {
+    state.trips.push({ id: uid(), ...data });
+  }
   save(); renderAll();
   closeModal('modalAddTrip');
   e.target.reset();
+  resetModalTitle('modalAddTrip', '✈️ Nuevo Viaje', 'formAddTrip', 'Guardar viaje 💾');
   document.querySelector('.emoji-opt.selected')?.classList.remove('selected');
   document.querySelector('.emoji-opt[data-emoji="🎭"]')?.classList.add('selected');
   document.getElementById('tripEmoji').value = '🎭';
@@ -722,6 +825,8 @@ function handleFile(file) {
 }
 
 document.getElementById('openAddTicket').addEventListener('click', () => {
+  editingTicketId = null;
+  resetModalTitle('modalAddTicket', '🎟️ Nueva Entrada', 'formAddTicket', 'Guardar 💾');
   const tripId = getFilteredTrip();
   if (tripId) document.getElementById('ticketTrip').value = tripId;
   clearFilePreview();
@@ -730,9 +835,10 @@ document.getElementById('openAddTicket').addEventListener('click', () => {
 
 document.getElementById('formAddTicket').addEventListener('submit', e => {
   e.preventDefault();
-  const ticket = {
-    id:       uid(),
-    tripId:   document.getElementById('ticketTrip').value,
+  const tripId = document.getElementById('ticketTrip').value;
+  if (!tripId) { alert('Selecciona un viaje'); return; }
+  const data = {
+    tripId,
     type:     document.getElementById('ticketType').value,
     name:     document.getElementById('ticketName').value.trim(),
     date:     document.getElementById('ticketDate').value,
@@ -747,19 +853,25 @@ document.getElementById('formAddTicket').addEventListener('submit', e => {
     fileName: pendingFileName,
     fileType: pendingFileType,
   };
-  if (!ticket.tripId) { alert('Selecciona un viaje'); return; }
   try {
-    state.tickets.push(ticket);
+    if (editingTicketId) {
+      const idx = state.tickets.findIndex(t => t.id === editingTicketId);
+      if (idx !== -1) state.tickets[idx] = { ...state.tickets[idx], ...data };
+      editingTicketId = null;
+    } else {
+      state.tickets.push({ id: uid(), ...data });
+    }
     save();
   } catch (err) {
-    state.tickets.pop();
-    alert('No hay espacio suficiente en el navegador para guardar el archivo. Intenta con uno más pequeño o usa la opción de URL.');
+    if (!editingTicketId) state.tickets.pop();
+    alert('No hay espacio suficiente para guardar el archivo. Intenta con uno más pequeño o usa la opción de URL.');
     return;
   }
   renderAll();
   closeModal('modalAddTicket');
   e.target.reset();
   clearFilePreview();
+  resetModalTitle('modalAddTicket', '🎟️ Nueva Entrada', 'formAddTicket', 'Guardar 💾');
 });
 
 // ── Filter tickets ──
@@ -774,6 +886,8 @@ document.querySelectorAll('.filter-btn').forEach(btn => {
 
 // ── Add Itinerary ──
 document.getElementById('openAddItinerary').addEventListener('click', () => {
+  editingItinId = null;
+  resetModalTitle('modalAddItinerary', '📅 Añadir actividad', 'formAddItinerary', 'Añadir 💾');
   const tripId = getFilteredTrip();
   if (tripId) document.getElementById('itineraryTrip').value = tripId;
   openModal('modalAddItinerary');
@@ -783,8 +897,7 @@ document.getElementById('formAddItinerary').addEventListener('submit', e => {
   e.preventDefault();
   const tripId = document.getElementById('itineraryTrip').value;
   if (!tripId) { alert('Selecciona un viaje'); return; }
-  const item = {
-    id:       uid(),
+  const data = {
     tripId,
     date:     document.getElementById('itineraryDate').value,
     time:     document.getElementById('itineraryTime').value,
@@ -795,10 +908,17 @@ document.getElementById('formAddItinerary').addEventListener('submit', e => {
     lng:      document.getElementById('itineraryLng').value,
     notes:    document.getElementById('itineraryNotes').value.trim(),
   };
-  state.itinerary.push(item);
+  if (editingItinId) {
+    const idx = state.itinerary.findIndex(i => i.id === editingItinId);
+    if (idx !== -1) state.itinerary[idx] = { ...state.itinerary[idx], ...data };
+    editingItinId = null;
+  } else {
+    state.itinerary.push({ id: uid(), ...data });
+  }
   save(); renderItinerary();
   closeModal('modalAddItinerary');
   e.target.reset();
+  resetModalTitle('modalAddItinerary', '📅 Añadir actividad', 'formAddItinerary', 'Añadir 💾');
 });
 
 // ── Add Packing Category ──

@@ -345,6 +345,30 @@ nav { display: flex; flex-direction: column; gap: 6px; flex: 1; }
 .trip-card .trip-badge.past { background: var(--peach); }
 .trip-card .trip-badge.upcoming { background: var(--pink); color: white; }
 
+.card-edit-btn {
+  position: absolute;
+  bottom: 14px; right: 14px;
+  background: var(--cream);
+  border: 2px solid var(--lavender);
+  border-radius: 50%;
+  width: 30px; height: 30px;
+  font-size: 0.8rem;
+  cursor: pointer;
+  display: grid; place-items: center;
+  transition: background 0.2s, transform 0.15s;
+  opacity: 0;
+}
+.trip-card:hover .card-edit-btn { opacity: 1; }
+.card-edit-btn:hover { background: var(--lavender); transform: scale(1.1); }
+
+.itin-edit {
+  background: none; border: none; cursor: pointer;
+  opacity: 0; font-size: 0.85rem; padding: 2px 4px;
+  border-radius: 6px; transition: opacity 0.15s, background 0.15s;
+}
+.itinerary-item:hover .itin-edit { opacity: 0.6; }
+.itin-edit:hover { opacity: 1 !important; background: rgba(255,255,255,0.5); }
+
 /* ══════════════ TICKETS ══════════════ */
 .filter-bar {
   display: flex;
