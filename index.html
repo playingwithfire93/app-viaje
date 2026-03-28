@@ -298,6 +298,26 @@
           <label>Notas</label>
           <textarea id="ticketNotes" placeholder="Detalles extra..." rows="2"></textarea>
         </div>
+        <div class="form-group">
+          <label>URL de reserva / confirmación</label>
+          <input type="url" id="ticketUrl" placeholder="ej: https://www.ticketmaster.com/...">
+        </div>
+        <div class="form-group">
+          <label>Subir ticket / reserva (PDF o imagen)</label>
+          <div class="file-upload-area" id="fileUploadArea">
+            <input type="file" id="ticketFile" accept=".pdf,.jpg,.jpeg,.png,.webp" hidden>
+            <div class="file-upload-placeholder" id="fileUploadPlaceholder">
+              <span class="file-upload-icon">📎</span>
+              <span>Haz click o arrastra tu PDF / imagen aquí</span>
+              <small>PDF, JPG, PNG · máx. 4 MB</small>
+            </div>
+            <div class="file-upload-preview hidden" id="fileUploadPreview">
+              <span class="file-preview-icon" id="filePreviewIcon">📄</span>
+              <span id="filePreviewName">archivo.pdf</span>
+              <button type="button" class="file-remove-btn" id="fileRemoveBtn">✕</button>
+            </div>
+          </div>
+        </div>
         <div class="form-actions">
           <button type="button" class="btn-secondary" data-modal="modalAddTicket">Cancelar</button>
           <button type="submit" class="btn-primary">Guardar 💾</button>

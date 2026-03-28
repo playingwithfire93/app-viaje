@@ -742,6 +742,89 @@ nav { display: flex; flex-direction: column; gap: 6px; flex: 1; }
   .dashboard-grid { grid-template-columns: 1fr 1fr; }
 }
 
+/* ══════════════ FILE UPLOAD ══════════════ */
+.file-upload-area {
+  border: 2px dashed var(--lavender);
+  border-radius: var(--radius-sm);
+  background: var(--cream);
+  transition: border-color 0.2s, background 0.2s;
+  cursor: pointer;
+  overflow: hidden;
+}
+.file-upload-area:hover, .file-upload-area.drag-over {
+  border-color: var(--lavender-dark);
+  background: #f3eeff;
+}
+.file-upload-placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 22px 16px;
+  text-align: center;
+  color: var(--text-light);
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+.file-upload-icon { font-size: 1.8rem; }
+.file-upload-placeholder small { font-size: 0.75rem; opacity: 0.7; }
+
+.file-upload-preview {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 16px;
+  background: var(--mint);
+  border-radius: var(--radius-sm);
+}
+.file-upload-preview.hidden { display: none; }
+.file-preview-icon { font-size: 1.4rem; }
+.file-upload-preview span { flex: 1; font-size: 0.85rem; font-weight: 700; color: var(--text); }
+.file-remove-btn {
+  background: rgba(255,255,255,0.6);
+  border: none;
+  border-radius: 50%;
+  width: 24px; height: 24px;
+  cursor: pointer;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--text);
+  transition: background 0.15s;
+}
+.file-remove-btn:hover { background: var(--pink); color: white; }
+
+/* Ticket attachment buttons */
+.ticket-attachments {
+  display: flex;
+  gap: 6px;
+  margin-top: 6px;
+  flex-wrap: wrap;
+}
+.btn-attachment {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 10px;
+  border-radius: 50px;
+  border: none;
+  font-family: 'Nunito', sans-serif;
+  font-size: 0.75rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: transform 0.15s, box-shadow 0.15s;
+  text-decoration: none;
+}
+.btn-attachment.url {
+  background: var(--lavender);
+  color: white;
+}
+.btn-attachment.file {
+  background: var(--mint);
+  color: var(--text);
+}
+.btn-attachment:hover { transform: translateY(-1px); box-shadow: 0 3px 8px rgba(0,0,0,0.12); }
+
 /* Scrollbar kawaii */
 ::-webkit-scrollbar { width: 8px; }
 ::-webkit-scrollbar-track { background: var(--cream); }

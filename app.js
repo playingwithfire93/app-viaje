@@ -271,6 +271,11 @@ function renderTickets() {
           <span style="background:var(--pink);color:white">${esc(getTripName(t.tripId))}</span>
         </div>
         ${t.notes ? `<p style="font-size:0.78rem;color:var(--text-light);margin-top:4px;font-style:italic">${esc(t.notes)}</p>` : ''}
+        ${(t.url || t.fileData) ? `
+          <div class="ticket-attachments">
+            ${t.url ? `<a class="btn-attachment url" href="${esc(t.url)}" target="_blank" rel="noopener">🔗 Ver reserva</a>` : ''}
+            ${t.fileData ? `<button class="btn-attachment file" data-open-file="${t.id}">📎 ${esc(t.fileName || 'Ver archivo')}</button>` : ''}
+          </div>` : ''}
       </div>
       <div class="ticket-actions">
         ${t.price ? `<span class="ticket-price">${parseFloat(t.price).toFixed(2)}€</span>` : ''}
@@ -286,6 +291,21 @@ function renderTickets() {
         state.tickets = state.tickets.filter(t => t.id !== btn.dataset.deleteTicket);
         save(); renderAll();
       }
+    });
+  });
+
+  container.querySelectorAll('[data-open-file]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const ticket = state.tickets.find(t => t.id === btn.dataset.openFile);
+      if (!ticket?.fileData) return;
+      const byteStr = atob(ticket.fileData.split(',')[1]);
+      const ab = new ArrayBuffer(byteStr.length);
+      const ia = new Uint8Array(ab);
+      for (let i = 0; i < byteStr.length; i++) ia[i] = byteStr.charCodeAt(i);
+      const blob = new Blob([ab], { type: ticket.fileType || 'application/pdf' });
+      const url  = URL.createObjectURL(blob);
+      window.open(url, '_blank');
+      setTimeout(() => URL.revokeObjectURL(url), 10000);
     });
   });
 }
@@ -647,32 +667,99 @@ document.getElementById('deleteTripBtn').addEventListener('click', () => {
 });
 
 // ── Add Ticket ──
+// ── File upload UI logic ──
+let pendingFileData = null;
+let pendingFileName = null;
+let pendingFileType = null;
+
+const fileInput       = document.getElementById('ticketFile');
+const fileUploadArea  = document.getElementById('fileUploadArea');
+const filePlaceholder = document.getElementById('fileUploadPlaceholder');
+const filePreview     = document.getElementById('fileUploadPreview');
+const filePreviewName = document.getElementById('filePreviewName');
+const filePreviewIcon = document.getElementById('filePreviewIcon');
+const fileRemoveBtn   = document.getElementById('fileRemoveBtn');
+
+function showFilePreview(name, type) {
+  const isPdf = type === 'application/pdf';
+  filePreviewIcon.textContent = isPdf ? '📄' : '🖼️';
+  filePreviewName.textContent = name;
+  filePlaceholder.classList.add('hidden');
+  filePreview.classList.remove('hidden');
+}
+function clearFilePreview() {
+  pendingFileData = null; pendingFileName = null; pendingFileType = null;
+  fileInput.value = '';
+  filePlaceholder.classList.remove('hidden');
+  filePreview.classList.add('hidden');
+}
+
+fileUploadArea.addEventListener('click', () => fileInput.click());
+fileUploadArea.addEventListener('dragover', e => { e.preventDefault(); fileUploadArea.classList.add('drag-over'); });
+fileUploadArea.addEventListener('dragleave', () => fileUploadArea.classList.remove('drag-over'));
+fileUploadArea.addEventListener('drop', e => {
+  e.preventDefault();
+  fileUploadArea.classList.remove('drag-over');
+  const file = e.dataTransfer.files[0];
+  if (file) handleFile(file);
+});
+fileInput.addEventListener('change', () => { if (fileInput.files[0]) handleFile(fileInput.files[0]); });
+fileRemoveBtn.addEventListener('click', e => { e.stopPropagation(); clearFilePreview(); });
+
+function handleFile(file) {
+  if (file.size > 4 * 1024 * 1024) {
+    alert('El archivo es demasiado grande (máx. 4 MB). Si es un PDF grande, usa la opción de URL.');
+    return;
+  }
+  const reader = new FileReader();
+  reader.onload = ev => {
+    pendingFileData = ev.target.result;
+    pendingFileName = file.name;
+    pendingFileType = file.type;
+    showFilePreview(file.name, file.type);
+  };
+  reader.readAsDataURL(file);
+}
+
 document.getElementById('openAddTicket').addEventListener('click', () => {
   const tripId = getFilteredTrip();
   if (tripId) document.getElementById('ticketTrip').value = tripId;
+  clearFilePreview();
   openModal('modalAddTicket');
 });
 
 document.getElementById('formAddTicket').addEventListener('submit', e => {
   e.preventDefault();
   const ticket = {
-    id:      uid(),
-    tripId:  document.getElementById('ticketTrip').value,
-    type:    document.getElementById('ticketType').value,
-    name:    document.getElementById('ticketName').value.trim(),
-    date:    document.getElementById('ticketDate').value,
-    time:    document.getElementById('ticketTime').value,
-    venue:   document.getElementById('ticketVenue').value.trim(),
-    seat:    document.getElementById('ticketSeat').value.trim(),
-    code:    document.getElementById('ticketCode').value.trim(),
-    price:   document.getElementById('ticketPrice').value,
-    notes:   document.getElementById('ticketNotes').value.trim(),
+    id:       uid(),
+    tripId:   document.getElementById('ticketTrip').value,
+    type:     document.getElementById('ticketType').value,
+    name:     document.getElementById('ticketName').value.trim(),
+    date:     document.getElementById('ticketDate').value,
+    time:     document.getElementById('ticketTime').value,
+    venue:    document.getElementById('ticketVenue').value.trim(),
+    seat:     document.getElementById('ticketSeat').value.trim(),
+    code:     document.getElementById('ticketCode').value.trim(),
+    price:    document.getElementById('ticketPrice').value,
+    notes:    document.getElementById('ticketNotes').value.trim(),
+    url:      document.getElementById('ticketUrl').value.trim(),
+    fileData: pendingFileData,
+    fileName: pendingFileName,
+    fileType: pendingFileType,
   };
   if (!ticket.tripId) { alert('Selecciona un viaje'); return; }
-  state.tickets.push(ticket);
-  save(); renderAll();
+  try {
+    state.tickets.push(ticket);
+    save();
+  } catch (err) {
+    state.tickets.pop();
+    alert('No hay espacio suficiente en el navegador para guardar el archivo. Intenta con uno más pequeño o usa la opción de URL.');
+    return;
+  }
+  renderAll();
   closeModal('modalAddTicket');
   e.target.reset();
+  clearFilePreview();
 });
 
 // ── Filter tickets ──
