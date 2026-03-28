@@ -1,0 +1,441 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>🎭 Musical Trips ✨</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:ital,wght@0,400;0,600;0,700;0,800;1,400&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <!-- Decorative sparkles background -->
+  <div class="sparkles" aria-hidden="true">
+    <span>✦</span><span>✧</span><span>✦</span><span>✧</span>
+    <span>✦</span><span>✧</span><span>✦</span><span>✧</span>
+  </div>
+
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="sidebar-header">
+      <div class="logo-wrap">🎭</div>
+      <h1>Musical<br><span>Trips</span></h1>
+    </div>
+
+    <div class="trip-selector-wrap">
+      <label>Viaje activo</label>
+      <select id="globalTripSelect">
+        <option value="">— Todos —</option>
+      </select>
+    </div>
+
+    <nav>
+      <button class="nav-btn active" data-section="dashboard">🏠 <span>Inicio</span></button>
+      <button class="nav-btn" data-section="trips">✈️ <span>Mis Viajes</span></button>
+      <button class="nav-btn" data-section="tickets">🎟️ <span>Entradas</span></button>
+      <button class="nav-btn" data-section="itinerary">🗺️ <span>Itinerario</span></button>
+      <button class="nav-btn" data-section="packing">🧳 <span>Mi Maleta</span></button>
+    </nav>
+
+    <div class="sidebar-footer">
+      <span>hecho con 💖</span>
+    </div>
+  </aside>
+
+  <!-- Main -->
+  <main class="main-content">
+
+    <!-- ══════════ DASHBOARD ══════════ -->
+    <section id="dashboard" class="section active">
+      <div class="section-header">
+        <h2>¡Hola! ✨</h2>
+        <p class="subtitle">Tu diario de viajes kawaii</p>
+      </div>
+
+      <div id="countdownCard" class="countdown-card hidden">
+        <div class="countdown-emoji">🎭</div>
+        <div class="countdown-info">
+          <p class="countdown-label">Próximo viaje</p>
+          <h3 id="countdownTrip">–</h3>
+          <p id="countdownDestination" class="countdown-dest">–</p>
+        </div>
+        <div class="countdown-days">
+          <span id="countdownNumber">–</span>
+          <small>días</small>
+        </div>
+      </div>
+
+      <div class="dashboard-grid">
+        <div class="dash-card" id="dashTrips">
+          <div class="dash-card-icon">✈️</div>
+          <div class="dash-card-info">
+            <span class="dash-card-num" id="numTrips">0</span>
+            <span class="dash-card-label">Viajes</span>
+          </div>
+        </div>
+        <div class="dash-card" id="dashTickets">
+          <div class="dash-card-icon">🎟️</div>
+          <div class="dash-card-info">
+            <span class="dash-card-num" id="numTickets">0</span>
+            <span class="dash-card-label">Entradas</span>
+          </div>
+        </div>
+        <div class="dash-card" id="dashMusicals">
+          <div class="dash-card-icon">🎭</div>
+          <div class="dash-card-info">
+            <span class="dash-card-num" id="numMusicals">0</span>
+            <span class="dash-card-label">Musicales</span>
+          </div>
+        </div>
+        <div class="dash-card" id="dashPacking">
+          <div class="dash-card-icon">🧳</div>
+          <div class="dash-card-info">
+            <span class="dash-card-num" id="numPacked">0</span>
+            <span class="dash-card-label">Items maleta</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="upcoming-section">
+        <h3>Próximas entradas 🌸</h3>
+        <div id="upcomingList" class="upcoming-list">
+          <p class="empty-msg">¡Añade tu primer viaje para empezar! ✨</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ══════════ TRIPS ══════════ -->
+    <section id="trips" class="section">
+      <div class="section-header">
+        <h2>Mis Viajes ✈️</h2>
+        <button class="btn-primary" id="openAddTrip">+ Nuevo viaje</button>
+      </div>
+      <div id="tripsList" class="trips-grid">
+        <p class="empty-msg">Aún no tienes viajes. ¡Crea el primero! 🌟</p>
+      </div>
+    </section>
+
+    <!-- ══════════ TICKETS ══════════ -->
+    <section id="tickets" class="section">
+      <div class="section-header">
+        <h2>Mis Entradas 🎟️</h2>
+        <button class="btn-primary" id="openAddTicket">+ Nueva entrada</button>
+      </div>
+
+      <div class="filter-bar">
+        <button class="filter-btn active" data-filter="all">Todo</button>
+        <button class="filter-btn" data-filter="musical">🎭 Musicales</button>
+        <button class="filter-btn" data-filter="vuelo">✈️ Vuelos</button>
+        <button class="filter-btn" data-filter="hotel">🏨 Hoteles</button>
+        <button class="filter-btn" data-filter="actividad">🎡 Actividades</button>
+        <button class="filter-btn" data-filter="tren">🚂 Trenes</button>
+        <button class="filter-btn" data-filter="otro">📌 Otros</button>
+      </div>
+
+      <div id="ticketsList" class="tickets-list">
+        <p class="empty-msg">No hay entradas aún. ¡Añade la primera! 🎟️</p>
+      </div>
+    </section>
+
+    <!-- ══════════ ITINERARY ══════════ -->
+    <section id="itinerary" class="section">
+      <div class="section-header">
+        <h2>Itinerario 🗺️</h2>
+        <button class="btn-primary" id="openAddItinerary">+ Añadir día</button>
+      </div>
+
+      <div class="itinerary-layout">
+        <div class="itinerary-days" id="itineraryDays">
+          <p class="empty-msg">Selecciona un viaje y añade días. 🌍</p>
+        </div>
+        <div class="map-panel">
+          <div id="map"></div>
+          <p class="map-hint">📍 Los lugares del día aparecen en el mapa</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ══════════ PACKING ══════════ -->
+    <section id="packing" class="section">
+      <div class="section-header">
+        <h2>Mi Maleta 🧳</h2>
+        <div class="header-actions">
+          <button class="btn-secondary" id="openAddCategory">+ Categoría</button>
+          <button class="btn-primary" id="openAddPackingItem">+ Item</button>
+        </div>
+      </div>
+
+      <div class="packing-stats">
+        <div class="packing-progress-wrap">
+          <div class="packing-progress-bar">
+            <div id="packingProgressFill" class="packing-progress-fill" style="width:0%"></div>
+          </div>
+          <span id="packingProgressLabel">0 / 0 preparados</span>
+        </div>
+      </div>
+
+      <div id="packingCategories" class="packing-categories">
+        <p class="empty-msg">Selecciona un viaje para ver tu maleta. 🧳</p>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- ══════════════ MODALS ══════════════ -->
+
+  <!-- Add Trip Modal -->
+  <div class="modal-overlay hidden" id="modalAddTrip">
+    <div class="modal">
+      <div class="modal-header">
+        <h3>✈️ Nuevo Viaje</h3>
+        <button class="modal-close" data-modal="modalAddTrip">✕</button>
+      </div>
+      <form id="formAddTrip">
+        <div class="form-group">
+          <label>Nombre del viaje *</label>
+          <input type="text" id="tripName" placeholder="ej: West End 2025 ✨" required>
+        </div>
+        <div class="form-group">
+          <label>Destino *</label>
+          <input type="text" id="tripDestination" placeholder="ej: Londres, UK" required>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Fecha inicio *</label>
+            <input type="date" id="tripStart" required>
+          </div>
+          <div class="form-group">
+            <label>Fecha fin *</label>
+            <input type="date" id="tripEnd" required>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Emoji del viaje</label>
+          <div class="emoji-picker">
+            <button type="button" class="emoji-opt selected" data-emoji="🎭">🎭</button>
+            <button type="button" class="emoji-opt" data-emoji="🌸">🌸</button>
+            <button type="button" class="emoji-opt" data-emoji="✨">✨</button>
+            <button type="button" class="emoji-opt" data-emoji="🗼">🗼</button>
+            <button type="button" class="emoji-opt" data-emoji="🎡">🎡</button>
+            <button type="button" class="emoji-opt" data-emoji="🌍">🌍</button>
+            <button type="button" class="emoji-opt" data-emoji="🎸">🎸</button>
+            <button type="button" class="emoji-opt" data-emoji="🌺">🌺</button>
+          </div>
+          <input type="hidden" id="tripEmoji" value="🎭">
+        </div>
+        <div class="form-group">
+          <label>Notas</label>
+          <textarea id="tripNotes" placeholder="¡Lo que quieras recordar!" rows="2"></textarea>
+        </div>
+        <div class="form-actions">
+          <button type="button" class="btn-secondary" data-modal="modalAddTrip">Cancelar</button>
+          <button type="submit" class="btn-primary">Guardar viaje 💾</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Add Ticket Modal -->
+  <div class="modal-overlay hidden" id="modalAddTicket">
+    <div class="modal">
+      <div class="modal-header">
+        <h3>🎟️ Nueva Entrada</h3>
+        <button class="modal-close" data-modal="modalAddTicket">✕</button>
+      </div>
+      <form id="formAddTicket">
+        <div class="form-row">
+          <div class="form-group">
+            <label>Tipo *</label>
+            <select id="ticketType" required>
+              <option value="musical">🎭 Musical</option>
+              <option value="vuelo">✈️ Vuelo</option>
+              <option value="hotel">🏨 Hotel</option>
+              <option value="actividad">🎡 Actividad</option>
+              <option value="tren">🚂 Tren</option>
+              <option value="otro">📌 Otro</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Viaje *</label>
+            <select id="ticketTrip" required></select>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Nombre / Título *</label>
+          <input type="text" id="ticketName" placeholder="ej: Hamilton – Orpheum Theatre" required>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Fecha *</label>
+            <input type="date" id="ticketDate" required>
+          </div>
+          <div class="form-group">
+            <label>Hora</label>
+            <input type="time" id="ticketTime">
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Lugar / Teatro / Aeropuerto</label>
+          <input type="text" id="ticketVenue" placeholder="ej: Victoria Palace Theatre">
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Asiento / Fila / Butaca</label>
+            <input type="text" id="ticketSeat" placeholder="ej: Fila D, Butaca 12">
+          </div>
+          <div class="form-group">
+            <label>Código de reserva</label>
+            <input type="text" id="ticketCode" placeholder="ej: ABC123">
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Precio</label>
+          <input type="number" id="ticketPrice" placeholder="ej: 85.00" step="0.01" min="0">
+        </div>
+        <div class="form-group">
+          <label>Notas</label>
+          <textarea id="ticketNotes" placeholder="Detalles extra..." rows="2"></textarea>
+        </div>
+        <div class="form-actions">
+          <button type="button" class="btn-secondary" data-modal="modalAddTicket">Cancelar</button>
+          <button type="submit" class="btn-primary">Guardar 💾</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Add Itinerary Day Modal -->
+  <div class="modal-overlay hidden" id="modalAddItinerary">
+    <div class="modal">
+      <div class="modal-header">
+        <h3>📅 Añadir actividad</h3>
+        <button class="modal-close" data-modal="modalAddItinerary">✕</button>
+      </div>
+      <form id="formAddItinerary">
+        <div class="form-row">
+          <div class="form-group">
+            <label>Viaje *</label>
+            <select id="itineraryTrip" required></select>
+          </div>
+          <div class="form-group">
+            <label>Fecha *</label>
+            <input type="date" id="itineraryDate" required>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Hora</label>
+            <input type="time" id="itineraryTime">
+          </div>
+          <div class="form-group">
+            <label>Emoji</label>
+            <input type="text" id="itineraryEmoji" placeholder="🎭" maxlength="2">
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Actividad *</label>
+          <input type="text" id="itineraryActivity" placeholder="ej: Hamilton en el Victoria Palace" required>
+        </div>
+        <div class="form-group">
+          <label>Lugar</label>
+          <input type="text" id="itineraryPlace" placeholder="ej: Victoria Palace Theatre, Londres">
+        </div>
+        <div class="form-group">
+          <label>Coordenadas (para el mapa)</label>
+          <div class="form-row">
+            <input type="number" id="itineraryLat" placeholder="Latitud ej: 51.4963" step="any">
+            <input type="number" id="itineraryLng" placeholder="Longitud ej: -0.1408" step="any">
+          </div>
+          <small class="hint">Busca el lugar en <a href="https://www.openstreetmap.org" target="_blank">OpenStreetMap</a> y copia las coordenadas</small>
+        </div>
+        <div class="form-group">
+          <label>Notas</label>
+          <textarea id="itineraryNotes" placeholder="Detalles, dirección, cómo llegar..." rows="2"></textarea>
+        </div>
+        <div class="form-actions">
+          <button type="button" class="btn-secondary" data-modal="modalAddItinerary">Cancelar</button>
+          <button type="submit" class="btn-primary">Añadir 💾</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Add Packing Category Modal -->
+  <div class="modal-overlay hidden" id="modalAddCategory">
+    <div class="modal modal-sm">
+      <div class="modal-header">
+        <h3>📦 Nueva categoría</h3>
+        <button class="modal-close" data-modal="modalAddCategory">✕</button>
+      </div>
+      <form id="formAddCategory">
+        <div class="form-group">
+          <label>Viaje *</label>
+          <select id="categoryTrip" required></select>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Emoji</label>
+            <input type="text" id="categoryEmoji" placeholder="👗" maxlength="2">
+          </div>
+          <div class="form-group" style="flex:3">
+            <label>Nombre de la categoría *</label>
+            <input type="text" id="categoryName" placeholder="ej: Ropa de teatro" required>
+          </div>
+        </div>
+        <div class="form-actions">
+          <button type="button" class="btn-secondary" data-modal="modalAddCategory">Cancelar</button>
+          <button type="submit" class="btn-primary">Crear 💾</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Add Packing Item Modal -->
+  <div class="modal-overlay hidden" id="modalAddPackingItem">
+    <div class="modal modal-sm">
+      <div class="modal-header">
+        <h3>✅ Añadir item</h3>
+        <button class="modal-close" data-modal="modalAddPackingItem">✕</button>
+      </div>
+      <form id="formAddPackingItem">
+        <div class="form-group">
+          <label>Viaje *</label>
+          <select id="packingItemTrip" required></select>
+        </div>
+        <div class="form-group">
+          <label>Categoría *</label>
+          <select id="packingItemCategory" required></select>
+        </div>
+        <div class="form-group">
+          <label>Item *</label>
+          <input type="text" id="packingItemName" placeholder="ej: Vestido para el musical" required>
+        </div>
+        <div class="form-actions">
+          <button type="button" class="btn-secondary" data-modal="modalAddPackingItem">Cancelar</button>
+          <button type="submit" class="btn-primary">Añadir 💾</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Trip Detail Modal -->
+  <div class="modal-overlay hidden" id="modalTripDetail">
+    <div class="modal">
+      <div class="modal-header">
+        <h3 id="tripDetailTitle">Detalle del viaje</h3>
+        <button class="modal-close" data-modal="modalTripDetail">✕</button>
+      </div>
+      <div id="tripDetailContent"></div>
+      <div class="form-actions">
+        <button class="btn-danger" id="deleteTripBtn">🗑️ Eliminar viaje</button>
+        <button class="btn-secondary" data-modal="modalTripDetail">Cerrar</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
