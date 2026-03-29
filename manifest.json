@@ -1,0 +1,28 @@
+{
+  "name": "Musical Trips ✨",
+  "short_name": "Musical Trips",
+  "description": "Tu diario de viajes kawaii 🎭",
+  "start_url": "/app-viaje/",
+  "scope": "/app-viaje/",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#FFB7C5",
+  "theme_color": "#C9B8E8",
+  "lang": "es",
+  "icons": [
+    {
+      "src": "icons/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "icons/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "maskable"
+    }
+  ],
+  "screenshots": [],
+  "categories": ["travel", "lifestyle"]
+}
