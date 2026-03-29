@@ -2,7 +2,7 @@
    Musical Trips — Service Worker 🎭
    ══════════════════════════════════ */
 
-const CACHE_NAME = 'musical-trips-v1';
+const CACHE_NAME = 'musical-trips-v3';
 
 const ASSETS = [
   '/app-viaje/',
