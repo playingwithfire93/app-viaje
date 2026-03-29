@@ -516,6 +516,23 @@ nav { display: flex; flex-direction: column; gap: 4px; flex: 1; }
   box-shadow: 4px 4px 0 var(--lavender);
   z-index: 1;
 }
+/* Fix Leaflet tiles broken by global CSS reset */
+#map img {
+  max-width: none !important;
+  max-height: none !important;
+  width: auto !important;
+  height: auto !important;
+  box-shadow: none !important;
+  border: none !important;
+  margin: 0 !important;
+  padding: 0 !important;
+}
+.leaflet-container {
+  font-family: var(--font-body);
+  font-size: 14px;
+}
+.leaflet-tile-container img,
+.leaflet-tile { display: block !important; }
 .map-hint { font-size: 0.85rem; color: var(--text-dim); text-align: center; margin-top: 8px; }
 
 /* ══════════════ PACKING ══════════════ */
