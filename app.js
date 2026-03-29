@@ -1036,13 +1036,59 @@ document.querySelectorAll('.filter-btn').forEach(btn => {
   });
 });
 
+// ── Ticket picker for itinerary modal ──
+function populateTicketPicker(tripId) {
+  const list = document.getElementById('ticketPickerList');
+  if (!list) return;
+  const tickets = tripId
+    ? state.tickets.filter(t => t.tripId === tripId)
+    : [];
+  if (!tickets.length) {
+    list.innerHTML = '<span style="font-size:0.8rem;color:var(--text-dim);font-family:var(--font-body)">No hay entradas para este viaje aún.</span>';
+    return;
+  }
+  list.innerHTML = tickets.map(t => `
+    <button type="button" class="ticket-chip" data-ticket-id="${t.id}"
+      style="display:flex;align-items:center;gap:5px;padding:4px 10px;
+             border:2px solid var(--rose);border-radius:4px;background:var(--bg2);
+             cursor:pointer;font-family:var(--font-body);font-size:0.95rem;
+             color:var(--text);transition:background 0.15s">
+      <span>${TYPE_ICONS[t.type] || '📌'}</span>
+      <span>${esc(t.name)}${t.date ? ' · ' + fmtDate(t.date) : ''}</span>
+    </button>
+  `).join('');
+  list.querySelectorAll('.ticket-chip').forEach(btn => {
+    btn.addEventListener('mouseenter', () => { btn.style.background = 'var(--lavender)'; btn.style.color = '#fff'; });
+    btn.addEventListener('mouseleave', () => { btn.style.background = 'var(--bg2)'; btn.style.color = 'var(--text)'; });
+    btn.addEventListener('click', () => {
+      const ticket = state.tickets.find(t => t.id === btn.dataset.ticketId);
+      if (!ticket) return;
+      document.getElementById('itineraryActivity').value = ticket.name;
+      if (ticket.venue) document.getElementById('itineraryPlace').value  = ticket.venue;
+      if (ticket.date)  document.getElementById('itineraryDate').value   = ticket.date;
+      if (ticket.time)  document.getElementById('itineraryTime').value   = ticket.time;
+      document.getElementById('itineraryEmoji').value = TYPE_ICONS[ticket.type] || '📌';
+      // highlight selected chip
+      list.querySelectorAll('.ticket-chip').forEach(b => { b.style.background = 'var(--bg2)'; b.style.color = 'var(--text)'; b.style.borderColor = 'var(--rose)'; });
+      btn.style.background  = 'var(--pink)';
+      btn.style.color       = '#fff';
+      btn.style.borderColor = 'var(--pink)';
+    });
+  });
+}
+
 // ── Add Itinerary ──
 document.getElementById('openAddItinerary').addEventListener('click', () => {
   editingItinId = null;
   resetModalTitle('modalAddItinerary', '📅 Añadir actividad', 'formAddItinerary', 'Añadir 💾');
   const tripId = getFilteredTrip();
   if (tripId) document.getElementById('itineraryTrip').value = tripId;
+  populateTicketPicker(tripId || '');
   openModal('modalAddItinerary');
+});
+
+document.getElementById('itineraryTrip').addEventListener('change', function() {
+  populateTicketPicker(this.value);
 });
 
 document.getElementById('formAddItinerary').addEventListener('submit', e => {
