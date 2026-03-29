@@ -33,9 +33,8 @@ const firebaseConfig = {
   appId:             '1:845919767537:web:dd3d268f3cf2340a769250',
 };
 firebase.initializeApp(firebaseConfig);
-const auth    = firebase.auth();
-const db      = firebase.firestore();
-const storage = firebase.storage();
+const auth = firebase.auth();
+const db   = firebase.firestore();
 let currentUser = null;
 
 // ── Auth ──
@@ -898,29 +897,9 @@ fileUploadArea.addEventListener('drop', e => {
 fileInput.addEventListener('change', () => { if (fileInput.files[0]) handleFile(fileInput.files[0]); });
 fileRemoveBtn.addEventListener('click', e => { e.stopPropagation(); clearFilePreview(); });
 
-async function handleFile(file) {
-  if (file.size > 10 * 1024 * 1024) {
-    alert('El archivo es demasiado grande (máx. 10 MB).');
-    return;
-  }
-  if (!currentUser) { alert('Inicia sesión para subir archivos.'); return; }
-
-  showFileUploading(file.name);
-
-  try {
-    const path = `users/${currentUser.uid}/${Date.now()}_${file.name}`;
-    const snapshot = await storage.ref(path).put(file);
-    const url = await snapshot.ref.getDownloadURL();
-    pendingFileUrl  = url;
-    pendingFileName = file.name;
-    pendingFileType = file.type;
-    hideFileUploading();
-    showFilePreview(file.name, file.type);
-  } catch (err) {
-    hideFileUploading();
-    alert('Error subiendo el archivo. Comprueba que Firebase Storage está activado.');
-    clearFilePreview();
-  }
+function handleFile(file) {
+  alert('La subida de archivos requiere el plan de pago de Firebase.\nUsa el campo "URL de reserva" para enlazar tu confirmación online. 🔗');
+  clearFilePreview();
 }
 
 document.getElementById('openAddTicket').addEventListener('click', () => {
