@@ -346,10 +346,10 @@ function renderTickets() {
           <span style="background:var(--pink);color:white">${esc(getTripName(t.tripId))}</span>
         </div>
         ${t.notes ? `<p style="font-size:0.78rem;color:var(--text-light);margin-top:4px;font-style:italic">${esc(t.notes)}</p>` : ''}
-        ${(t.url || t.fileUrl || t.fileData) ? `
+        ${(t.url || t.hasFile) ? `
           <div class="ticket-attachments">
             ${t.url ? `<a class="btn-attachment url" href="${esc(t.url)}" target="_blank" rel="noopener">🔗 Ver reserva</a>` : ''}
-            ${(t.fileUrl || t.fileData) ? `<button class="btn-attachment file" data-open-file="${t.id}">📎 ${esc(t.fileName || 'Ver archivo')}</button>` : ''}
+            ${t.hasFile ? `<button class="btn-attachment file" data-open-file="${t.id}">📎 ${esc(t.fileName || 'Ver archivo')}</button>` : ''}
           </div>` : ''}
       </div>
       <div class="ticket-actions">
@@ -376,20 +376,24 @@ function renderTickets() {
   container.querySelectorAll('[data-open-file]').forEach(btn => {
     btn.addEventListener('click', () => {
       const ticket = state.tickets.find(t => t.id === btn.dataset.openFile);
-      if (!ticket) return;
-      if (ticket.fileUrl) {
-        window.open(ticket.fileUrl, '_blank');
-      } else if (ticket.fileData) {
-        // Compatibilidad con archivos guardados antes de Firebase
-        const byteStr = atob(ticket.fileData.split(',')[1]);
-        const ab = new ArrayBuffer(byteStr.length);
-        const ia = new Uint8Array(ab);
-        for (let i = 0; i < byteStr.length; i++) ia[i] = byteStr.charCodeAt(i);
-        const blob = new Blob([ab], { type: ticket.fileType || 'application/pdf' });
-        const blobUrl = URL.createObjectURL(blob);
-        window.open(blobUrl, '_blank');
-        setTimeout(() => URL.revokeObjectURL(blobUrl), 10000);
-      }
+      if (!ticket || !currentUser) return;
+      btn.textContent = '⏳';
+      db.collection('users').doc(currentUser.uid)
+        .collection('files').doc(ticket.id).get()
+        .then(doc => {
+          btn.textContent = '📎';
+          if (!doc.exists) { alert('Archivo no encontrado.'); return; }
+          const { data, type } = doc.data();
+          const byteStr = atob(data.split(',')[1]);
+          const ab = new ArrayBuffer(byteStr.length);
+          const ia = new Uint8Array(ab);
+          for (let i = 0; i < byteStr.length; i++) ia[i] = byteStr.charCodeAt(i);
+          const blob = new Blob([ab], { type: type || 'application/pdf' });
+          const blobUrl = URL.createObjectURL(blob);
+          window.open(blobUrl, '_blank');
+          setTimeout(() => URL.revokeObjectURL(blobUrl), 15000);
+        })
+        .catch(() => { btn.textContent = '📎'; alert('Error abriendo el archivo.'); });
     });
   });
 }
@@ -747,8 +751,7 @@ function openEditTicket(id) {
   document.getElementById('ticketPrice').value = t.price || '';
   document.getElementById('ticketNotes').value = t.notes || '';
   document.getElementById('ticketUrl').value   = t.url   || '';
-  if (t.fileUrl) {
-    pendingFileUrl  = t.fileUrl;
+  if (t.hasFile && t.fileName) {
     pendingFileName = t.fileName;
     pendingFileType = t.fileType;
     showFilePreview(t.fileName, t.fileType);
@@ -842,7 +845,8 @@ document.getElementById('deleteTripBtn').addEventListener('click', () => {
 
 // ── Add Ticket ──
 // ── File upload UI logic ──
-let pendingFileUrl  = null;
+let pendingFileData = null;   // base64 string
+let pendingFileUrl  = null;   // Firestore doc id (after save)
 let pendingFileName = null;
 let pendingFileType = null;
 
@@ -862,13 +866,11 @@ function showFilePreview(name, type) {
   filePreview.classList.remove('hidden');
 }
 function clearFilePreview() {
-  pendingFileUrl = null; pendingFileName = null; pendingFileType = null;
+  pendingFileData = null; pendingFileUrl = null; pendingFileName = null; pendingFileType = null;
   fileInput.value = '';
   filePlaceholder.classList.remove('hidden');
   filePreview.classList.add('hidden');
-  fileUploadArea.innerHTML = fileUploadArea.innerHTML; // reset uploading state
-  // Re-bind click after innerHTML reset
-  document.getElementById('fileUploadArea').addEventListener('click', () => fileInput.click());
+  document.getElementById('uploadingState')?.remove();
 }
 
 function showFileUploading(name) {
@@ -898,8 +900,21 @@ fileInput.addEventListener('change', () => { if (fileInput.files[0]) handleFile(
 fileRemoveBtn.addEventListener('click', e => { e.stopPropagation(); clearFilePreview(); });
 
 function handleFile(file) {
-  alert('La subida de archivos requiere el plan de pago de Firebase.\nUsa el campo "URL de reserva" para enlazar tu confirmación online. 🔗');
-  clearFilePreview();
+  if (file.size > 700 * 1024) {
+    alert('El archivo es demasiado grande (máx. 700 KB).\nLos e-tickets suelen ser más pequeños. Si no cabe, usa la opción de URL. 🔗');
+    return;
+  }
+  showFileUploading(file.name);
+  const reader = new FileReader();
+  reader.onload = ev => {
+    pendingFileData = ev.target.result;  // base64
+    pendingFileName = file.name;
+    pendingFileType = file.type;
+    hideFileUploading();
+    showFilePreview(file.name, file.type);
+  };
+  reader.onerror = () => { hideFileUploading(); alert('Error leyendo el archivo.'); };
+  reader.readAsDataURL(file);
 }
 
 document.getElementById('openAddTicket').addEventListener('click', () => {
@@ -927,16 +942,24 @@ document.getElementById('formAddTicket').addEventListener('submit', e => {
     price:    document.getElementById('ticketPrice').value,
     notes:    document.getElementById('ticketNotes').value.trim(),
     url:      document.getElementById('ticketUrl').value.trim(),
-    fileUrl:  pendingFileUrl,
     fileName: pendingFileName,
     fileType: pendingFileType,
+    hasFile:  !!pendingFileData,
   };
+  const ticketId = editingTicketId || uid();
   if (editingTicketId) {
     const idx = state.tickets.findIndex(t => t.id === editingTicketId);
-    if (idx !== -1) state.tickets[idx] = { ...state.tickets[idx], ...data };
+    if (idx !== -1) state.tickets[idx] = { ...state.tickets[idx], ...data, id: ticketId };
     editingTicketId = null;
   } else {
-    state.tickets.push({ id: uid(), ...data });
+    state.tickets.push({ id: ticketId, ...data });
+  }
+  // Guardar archivo en Firestore como documento separado
+  if (pendingFileData && currentUser) {
+    db.collection('users').doc(currentUser.uid)
+      .collection('files').doc(ticketId)
+      .set({ data: pendingFileData, name: pendingFileName, type: pendingFileType })
+      .catch(err => console.error('Error guardando archivo:', err));
   }
   save();
   renderAll();
