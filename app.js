@@ -23,17 +23,84 @@ let editingTripId   = null;
 let editingTicketId = null;
 let editingItinId   = null;
 
-// ── Storage ──
+// ── Firebase ──
+const firebaseConfig = {
+  apiKey:            'AIzaSyDGm04vT9M4BAaFf-3vN2H6PYcqgH0xapY',
+  authDomain:        'app-viaje-ff421.firebaseapp.com',
+  projectId:         'app-viaje-ff421',
+  storageBucket:     'app-viaje-ff421.firebasestorage.app',
+  messagingSenderId: '845919767537',
+  appId:             '1:845919767537:web:dd3d268f3cf2340a769250',
+};
+firebase.initializeApp(firebaseConfig);
+const auth    = firebase.auth();
+const db      = firebase.firestore();
+const storage = firebase.storage();
+let currentUser = null;
+
+// ── Auth ──
+auth.onAuthStateChanged(user => {
+  if (user) {
+    currentUser = user;
+    document.getElementById('loginScreen').classList.add('hidden');
+    document.getElementById('userAvatar').src         = user.photoURL || '';
+    document.getElementById('userDisplayName').textContent = user.displayName?.split(' ')[0] || '';
+    loadFromFirestore();
+  } else {
+    currentUser = null;
+    document.getElementById('loginScreen').classList.remove('hidden');
+  }
+});
+
+document.getElementById('btnSignIn').addEventListener('click', () => {
+  const provider = new firebase.auth.GoogleAuthProvider();
+  auth.signInWithPopup(provider).catch(err => alert('Error al iniciar sesión: ' + err.message));
+});
+
+document.getElementById('btnSignOut').addEventListener('click', () => {
+  if (confirm('¿Cerrar sesión?')) auth.signOut();
+});
+
+// ── Storage (Firestore) ──
 function save() {
-  localStorage.setItem('musicalTrips', JSON.stringify(state));
+  if (!currentUser) return;
+  db.collection('users').doc(currentUser.uid).set({
+    trips:      state.trips,
+    tickets:    state.tickets,
+    itinerary:  state.itinerary,
+    packing:    state.packing,
+    categories: state.categories,
+  }).catch(err => console.error('Error guardando:', err));
 }
 
-function load() {
-  const raw = localStorage.getItem('musicalTrips');
-  if (raw) {
-    const saved = JSON.parse(raw);
-    state = { ...state, ...saved, currentSection: 'dashboard', currentFilter: 'all' };
+async function loadFromFirestore() {
+  try {
+    const doc = await db.collection('users').doc(currentUser.uid).get();
+    if (doc.exists) {
+      const d = doc.data();
+      state.trips      = d.trips      || [];
+      state.tickets    = d.tickets    || [];
+      state.itinerary  = d.itinerary  || [];
+      state.packing    = d.packing    || [];
+      state.categories = d.categories || [];
+    } else {
+      // Primera vez: migrar datos de localStorage si los hay
+      const raw = localStorage.getItem('musicalTrips');
+      if (raw) {
+        const saved = JSON.parse(raw);
+        state.trips      = saved.trips      || [];
+        state.tickets    = saved.tickets    || [];
+        state.itinerary  = saved.itinerary  || [];
+        state.packing    = saved.packing    || [];
+        state.categories = saved.categories || [];
+        save();
+        localStorage.removeItem('musicalTrips');
+      }
+    }
+  } catch (err) {
+    console.error('Error cargando datos:', err);
   }
+  renderAll();
 }
 
 // ── IDs ──
@@ -280,10 +347,10 @@ function renderTickets() {
           <span style="background:var(--pink);color:white">${esc(getTripName(t.tripId))}</span>
         </div>
         ${t.notes ? `<p style="font-size:0.78rem;color:var(--text-light);margin-top:4px;font-style:italic">${esc(t.notes)}</p>` : ''}
-        ${(t.url || t.fileData) ? `
+        ${(t.url || t.fileUrl || t.fileData) ? `
           <div class="ticket-attachments">
             ${t.url ? `<a class="btn-attachment url" href="${esc(t.url)}" target="_blank" rel="noopener">🔗 Ver reserva</a>` : ''}
-            ${t.fileData ? `<button class="btn-attachment file" data-open-file="${t.id}">📎 ${esc(t.fileName || 'Ver archivo')}</button>` : ''}
+            ${(t.fileUrl || t.fileData) ? `<button class="btn-attachment file" data-open-file="${t.id}">📎 ${esc(t.fileName || 'Ver archivo')}</button>` : ''}
           </div>` : ''}
       </div>
       <div class="ticket-actions">
@@ -310,15 +377,20 @@ function renderTickets() {
   container.querySelectorAll('[data-open-file]').forEach(btn => {
     btn.addEventListener('click', () => {
       const ticket = state.tickets.find(t => t.id === btn.dataset.openFile);
-      if (!ticket?.fileData) return;
-      const byteStr = atob(ticket.fileData.split(',')[1]);
-      const ab = new ArrayBuffer(byteStr.length);
-      const ia = new Uint8Array(ab);
-      for (let i = 0; i < byteStr.length; i++) ia[i] = byteStr.charCodeAt(i);
-      const blob = new Blob([ab], { type: ticket.fileType || 'application/pdf' });
-      const url  = URL.createObjectURL(blob);
-      window.open(url, '_blank');
-      setTimeout(() => URL.revokeObjectURL(url), 10000);
+      if (!ticket) return;
+      if (ticket.fileUrl) {
+        window.open(ticket.fileUrl, '_blank');
+      } else if (ticket.fileData) {
+        // Compatibilidad con archivos guardados antes de Firebase
+        const byteStr = atob(ticket.fileData.split(',')[1]);
+        const ab = new ArrayBuffer(byteStr.length);
+        const ia = new Uint8Array(ab);
+        for (let i = 0; i < byteStr.length; i++) ia[i] = byteStr.charCodeAt(i);
+        const blob = new Blob([ab], { type: ticket.fileType || 'application/pdf' });
+        const blobUrl = URL.createObjectURL(blob);
+        window.open(blobUrl, '_blank');
+        setTimeout(() => URL.revokeObjectURL(blobUrl), 10000);
+      }
     });
   });
 }
@@ -676,8 +748,8 @@ function openEditTicket(id) {
   document.getElementById('ticketPrice').value = t.price || '';
   document.getElementById('ticketNotes').value = t.notes || '';
   document.getElementById('ticketUrl').value   = t.url   || '';
-  if (t.fileData) {
-    pendingFileData = t.fileData;
+  if (t.fileUrl) {
+    pendingFileUrl  = t.fileUrl;
     pendingFileName = t.fileName;
     pendingFileType = t.fileType;
     showFilePreview(t.fileName, t.fileType);
@@ -771,7 +843,7 @@ document.getElementById('deleteTripBtn').addEventListener('click', () => {
 
 // ── Add Ticket ──
 // ── File upload UI logic ──
-let pendingFileData = null;
+let pendingFileUrl  = null;
 let pendingFileName = null;
 let pendingFileType = null;
 
@@ -791,10 +863,27 @@ function showFilePreview(name, type) {
   filePreview.classList.remove('hidden');
 }
 function clearFilePreview() {
-  pendingFileData = null; pendingFileName = null; pendingFileType = null;
+  pendingFileUrl = null; pendingFileName = null; pendingFileType = null;
   fileInput.value = '';
   filePlaceholder.classList.remove('hidden');
   filePreview.classList.add('hidden');
+  fileUploadArea.innerHTML = fileUploadArea.innerHTML; // reset uploading state
+  // Re-bind click after innerHTML reset
+  document.getElementById('fileUploadArea').addEventListener('click', () => fileInput.click());
+}
+
+function showFileUploading(name) {
+  filePlaceholder.classList.add('hidden');
+  filePreview.classList.add('hidden');
+  fileUploadArea.insertAdjacentHTML('beforeend',
+    `<div class="file-upload-uploading" id="uploadingState">
+       <div class="upload-spinner"></div>
+       <span>Subiendo ${esc(name)}…</span>
+     </div>`
+  );
+}
+function hideFileUploading() {
+  document.getElementById('uploadingState')?.remove();
 }
 
 fileUploadArea.addEventListener('click', () => fileInput.click());
@@ -809,19 +898,29 @@ fileUploadArea.addEventListener('drop', e => {
 fileInput.addEventListener('change', () => { if (fileInput.files[0]) handleFile(fileInput.files[0]); });
 fileRemoveBtn.addEventListener('click', e => { e.stopPropagation(); clearFilePreview(); });
 
-function handleFile(file) {
-  if (file.size > 4 * 1024 * 1024) {
-    alert('El archivo es demasiado grande (máx. 4 MB). Si es un PDF grande, usa la opción de URL.');
+async function handleFile(file) {
+  if (file.size > 10 * 1024 * 1024) {
+    alert('El archivo es demasiado grande (máx. 10 MB).');
     return;
   }
-  const reader = new FileReader();
-  reader.onload = ev => {
-    pendingFileData = ev.target.result;
+  if (!currentUser) { alert('Inicia sesión para subir archivos.'); return; }
+
+  showFileUploading(file.name);
+
+  try {
+    const path = `users/${currentUser.uid}/${Date.now()}_${file.name}`;
+    const snapshot = await storage.ref(path).put(file);
+    const url = await snapshot.ref.getDownloadURL();
+    pendingFileUrl  = url;
     pendingFileName = file.name;
     pendingFileType = file.type;
+    hideFileUploading();
     showFilePreview(file.name, file.type);
-  };
-  reader.readAsDataURL(file);
+  } catch (err) {
+    hideFileUploading();
+    alert('Error subiendo el archivo. Comprueba que Firebase Storage está activado.');
+    clearFilePreview();
+  }
 }
 
 document.getElementById('openAddTicket').addEventListener('click', () => {
@@ -849,24 +948,18 @@ document.getElementById('formAddTicket').addEventListener('submit', e => {
     price:    document.getElementById('ticketPrice').value,
     notes:    document.getElementById('ticketNotes').value.trim(),
     url:      document.getElementById('ticketUrl').value.trim(),
-    fileData: pendingFileData,
+    fileUrl:  pendingFileUrl,
     fileName: pendingFileName,
     fileType: pendingFileType,
   };
-  try {
-    if (editingTicketId) {
-      const idx = state.tickets.findIndex(t => t.id === editingTicketId);
-      if (idx !== -1) state.tickets[idx] = { ...state.tickets[idx], ...data };
-      editingTicketId = null;
-    } else {
-      state.tickets.push({ id: uid(), ...data });
-    }
-    save();
-  } catch (err) {
-    if (!editingTicketId) state.tickets.pop();
-    alert('No hay espacio suficiente para guardar el archivo. Intenta con uno más pequeño o usa la opción de URL.');
-    return;
+  if (editingTicketId) {
+    const idx = state.tickets.findIndex(t => t.id === editingTicketId);
+    if (idx !== -1) state.tickets[idx] = { ...state.tickets[idx], ...data };
+    editingTicketId = null;
+  } else {
+    state.tickets.push({ id: uid(), ...data });
   }
+  save();
   renderAll();
   closeModal('modalAddTicket');
   e.target.reset();
@@ -1013,10 +1106,6 @@ function esc(str) {
 // INIT
 // ──────────────────────────────────────────
 
-load();
-renderAll();
-
-// Add some default packing categories if it's the user's first time
-if (state.trips.length === 0 && state.categories.length === 0) {
-  console.log('¡Bienvenida a Musical Trips! 🎭✨');
-}
+// La app se inicializa cuando Firebase detecta el estado de auth
+// (ver auth.onAuthStateChanged arriba)
+console.log('🎭 Musical Trips cargado');
