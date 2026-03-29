@@ -573,6 +573,7 @@ function renderPacking() {
           <h4>${cat.emoji || '📦'} ${esc(cat.name)}</h4>
           <div style="display:flex;align-items:center;gap:10px">
             <span style="font-size:0.78rem;font-weight:700;color:var(--text-light)">${checked}/${items.length}</span>
+            <button class="btn-icon edit-cat" data-cat-id="${cat.id}" title="Editar categoría">✏️</button>
             <button class="btn-icon delete-cat" data-cat-id="${cat.id}" title="Eliminar categoría">🗑️</button>
           </div>
         </div>
@@ -581,6 +582,7 @@ function renderPacking() {
             <div class="packing-item ${item.checked ? 'checked' : ''}" data-item="${item.id}">
               <input type="checkbox" id="chk_${item.id}" ${item.checked ? 'checked' : ''}>
               <label for="chk_${item.id}">${esc(item.name)}</label>
+              <button class="packing-item-edit" data-edit-item="${item.id}" title="Editar">✏️</button>
               <button class="packing-item-delete" data-delete-item="${item.id}">✕</button>
             </div>
           `).join('')}
@@ -626,6 +628,61 @@ function renderPacking() {
         state.packing    = state.packing.filter(p => p.categoryId !== catId);
         save(); renderPacking();
       }
+    });
+  });
+
+  // Edit category name/emoji
+  container.querySelectorAll('.edit-cat').forEach(btn => {
+    btn.addEventListener('click', e => {
+      e.stopPropagation();
+      const catId = btn.dataset.catId;
+      const cat = state.categories.find(c => c.id === catId);
+      if (!cat) return;
+      const h4 = btn.closest('.packing-category-header').querySelector('h4');
+      h4.innerHTML = `
+        <input class="inline-edit-emoji" value="${cat.emoji || '📦'}" maxlength="2"
+          style="width:2.2rem;text-align:center;border:none;border-bottom:2px solid var(--pink);background:transparent;font-size:1rem;cursor:text">
+        <input class="inline-edit-name" value="${cat.name}"
+          style="border:none;border-bottom:2px solid var(--pink);background:transparent;font-family:inherit;font-size:inherit;color:inherit;width:8rem;cursor:text">
+      `;
+      const emojiInput = h4.querySelector('.inline-edit-emoji');
+      const nameInput  = h4.querySelector('.inline-edit-name');
+      nameInput.focus(); nameInput.select();
+      let done = false;
+      const commit = () => {
+        if (done) return; done = true;
+        const newEmoji = emojiInput.value.trim() || '📦';
+        const newName  = nameInput.value.trim();
+        if (newName) { cat.emoji = newEmoji; cat.name = newName; save(); }
+        renderPacking();
+      };
+      emojiInput.addEventListener('keydown', ev => { if (ev.key === 'Enter') { ev.preventDefault(); nameInput.focus(); } });
+      nameInput.addEventListener('keydown', ev => { if (ev.key === 'Enter') { ev.preventDefault(); commit(); } if (ev.key === 'Escape') renderPacking(); });
+      nameInput.addEventListener('blur', () => setTimeout(commit, 150));
+      emojiInput.addEventListener('blur', () => setTimeout(commit, 150));
+    });
+  });
+
+  // Edit item name
+  container.querySelectorAll('[data-edit-item]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const itemId = btn.dataset.editItem;
+      const item   = state.packing.find(p => p.id === itemId);
+      if (!item) return;
+      const label = btn.closest('.packing-item').querySelector('label');
+      label.innerHTML = `<input class="inline-edit-item" value="${item.name}"
+        style="border:none;border-bottom:2px solid var(--pink);background:transparent;font-family:inherit;font-size:inherit;color:inherit;width:90%">`;
+      const input = label.querySelector('.inline-edit-item');
+      input.focus(); input.select();
+      let done = false;
+      const commit = () => {
+        if (done) return; done = true;
+        const newName = input.value.trim();
+        if (newName) { item.name = newName; save(); }
+        renderPacking();
+      };
+      input.addEventListener('keydown', ev => { if (ev.key === 'Enter') { ev.preventDefault(); commit(); } if (ev.key === 'Escape') renderPacking(); });
+      input.addEventListener('blur', () => setTimeout(commit, 150));
     });
   });
 
